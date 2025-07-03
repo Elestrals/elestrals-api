@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { importCardsFromJson } from '../src/utils/import-data';
+import { importCardsFromJson } from '@src/utils/import-data';
 
 const dataPath = process.argv[2] || 'data';
 

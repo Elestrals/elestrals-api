@@ -3,7 +3,7 @@ import { join } from "path";
 
 import { eq } from "drizzle-orm";
 
-import { db } from "../db/connection";
+import { db } from "@src/db/connection";
 import {
     canvas,
     cards,
@@ -17,7 +17,6 @@ import {
 } from "../db/schema";
 
 import { CardSchema, SeriesSchema, SetSchema, type CardData } from "./dump-data";
-
 
 class DataImporter {
     private canvasCache = new Map<string, number>();
@@ -67,16 +66,15 @@ class DataImporter {
     private async processCard(cardData: CardData) {
         const canvasId = await this.getOrCreateCanvas(cardData.canvas);
         const frameId = await this.getOrCreateFrame(cardData.frame_material);
-        await this.getOrCreateSeries(cardData);
         const setId = await this.getOrCreateSet(cardData);
 
         const cardId = await this.insertCard(cardData, canvasId, frameId, setId);
 
         await this.processSubclasses(cardId, cardData.subclasses);
-        await this.processvaraints(cardId, cardData.varaints, cardData.image);
+        await this.processVariants(cardId, cardData.variants, cardData.image);
     }
 
-    private async getOrCreateCanvas(canvasName: string): Promise<number> {
+    private async getOrCreateCanvas(canvasName: string) {
         if (this.canvasCache.has(canvasName)) {
             return this.canvasCache.get(canvasName)!;
         }
@@ -98,7 +96,7 @@ class DataImporter {
         }
     }
 
-    private async getOrCreateFrame(frameName: string): Promise<number> {
+    private async getOrCreateFrame(frameName: string) {
         if (this.framesCache.has(frameName)) {
             return this.framesCache.get(frameName)!;
         }
@@ -120,7 +118,7 @@ class DataImporter {
         }
     }
 
-    private async getOrCreateSet(cardData: CardData): Promise<string> {
+    private async getOrCreateSet(cardData: CardData) {
         if (this.setsCache.has(cardData.set_id)) {
             return this.setsCache.get(cardData.set_id)!;
         }
@@ -138,6 +136,7 @@ class DataImporter {
                 const setFileContent = await readFile(setFilePath, "utf-8");
                 const rawSetData = JSON.parse(setFileContent);
                 const setData = SetSchema.parse(rawSetData);
+                await this.getOrCreateSeries(cardData);
                 await db.insert(sets).values({
                     id: setData.id,
                     name: setData.name,
@@ -170,7 +169,7 @@ class DataImporter {
         }
     }
 
-    private async getOrCreateSeries(cardData: CardData): Promise<string> {
+    private async getOrCreateSeries(cardData: CardData) {
         if (this.seriesCache.has(cardData.series_id)) {
             return this.seriesCache.get(cardData.series_id)!;
         }
@@ -196,10 +195,10 @@ class DataImporter {
                     icon: seriesData.icon,
                 });
             } catch (seriesFileError) {
-                console.warn(
+                console.error(
                     `Error reading file for ${cardData.series_id} at ${seriesFilePath}, using card data as fallback`,
                 );
-                console.warn(`Error: ${seriesFileError}`);
+                console.error(`Error: ${seriesFileError}`);
                 await db.insert(series).values({
                     id: cardData.series_id,
                     name: cardData.series,
@@ -214,7 +213,7 @@ class DataImporter {
         }
     }
 
-    private async insertCard(cardData: CardData, canvasId: number, frameId: number, setId: string): Promise<string> {
+    private async insertCard(cardData: CardData, canvasId: number, frameId: number, setId: string) {
         try {
             await db.insert(cards).values({
                 id: cardData.id,
@@ -257,12 +256,12 @@ class DataImporter {
         }
     }
 
-    private getElementCost(costs: string[], element: string): number {
+    private getElementCost(costs: string[], element: string) {
         return costs.filter((cost) => cost === element).length;
     }
 
     private async processSubclasses(cardId: string, subclassNames: string[]) {
-        if (!subclassNames || subclassNames.length === 0) return;
+        if (subclassNames.length === 0) return;
 
         for (let i = 0; i < Math.min(subclassNames.length, 2); i++) {
             const subclassId = await this.getOrCreateSubclass(subclassNames[i]);
@@ -275,7 +274,7 @@ class DataImporter {
         }
     }
 
-    private async getOrCreateSubclass(subclassName: string): Promise<number> {
+    private async getOrCreateSubclass(subclassName: string) {
         if (this.subclassesCache.has(subclassName)) {
             return this.subclassesCache.get(subclassName)!;
         }
@@ -300,7 +299,7 @@ class DataImporter {
         }
     }
 
-    private async processvaraints(cardId: string, variantNames: string[], primaryImage: string) {
+    private async processVariants(cardId: string, variantNames: string[], primaryImage: string) {
         if (!variantNames || variantNames.length === 0) return;
 
         for (let i = 0; i < variantNames.length; i++) {
