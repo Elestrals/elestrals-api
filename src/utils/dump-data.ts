@@ -33,7 +33,7 @@ export const CardSchema = z.object({
     elements: z.array(z.string()),
     cost: z.array(z.string()),
     subclasses: z.array(z.string()),
-    varaints: z.array(z.string()),
+    variants: z.array(z.enum(["normal", "reverse_holo", "holo", "metal"])),
 });
 
 export const SeriesSchema = z.object({
